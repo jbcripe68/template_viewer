@@ -37,8 +37,7 @@ This project requires you to develop a website template viewer. The template vie
 
 * Take your interpretation of the requirements. As long as your interpretation is defensible.
 
-### How do I submit the project ###
+### How do I submit the project? ###
 
-* Upload to a bitbucket repo and provide us with the URL 
-* Submit as a zip file via email
-* Make sure to include a readme on any installation steps to run the project
+* Submit a URL to a public bitbucket repo
+* Make sure to include a readme to document any installation steps to run the project
