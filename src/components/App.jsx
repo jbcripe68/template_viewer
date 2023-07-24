@@ -13,13 +13,21 @@ export default function App() {
   const [errStr, setErrStr] = useState("");
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchData() {
       setIsLoading(true);
       setErrStr("");
+      setData([]);
       try {
         const res = await fetch(
-          `http://localhost:3005/api/v1/template/get-page?objsPerPage=4&page=${page}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/v1/template/get-page?objsPerPage=4&page=${page}`
         );
+        if (!res.ok) {
+          throw new Error("Something went wrong getting the data...");
+        }
         const json = await res.json();
         if (json.status !== "success") {
           throw new Error(json.message);
@@ -40,6 +48,8 @@ export default function App() {
       return setIsRetry(false);
     }
     fetchData();
+
+    return () => controller.abort();
   }, [page, isRetry]);
 
   function handleThumbClick(index) {
