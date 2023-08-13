@@ -26,12 +26,14 @@
     "morgan": "^1.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "xss-clean": "^0.1.4"
+    "xss-clean": "^0.1.4",
+    "vite": "^4.4.5",
+    "@vitejs/plugin-react": "^4.0.3",
+    "vite-plugin-eslint": "^1.8.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
-    "@vitejs/plugin-react": "^4.0.3",
     "chai": "^4.3.7",
     "eslint": "^8.45.0",
     "eslint-config-airbnb": "^19.0.4",
@@ -45,9 +47,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
     "mocha": "^10.2.0",
-    "nodemon": "^3.0.1",
-    "vite": "^4.4.5",
-    "vite-plugin-eslint": "^1.8.1"
+    "nodemon": "^3.0.1"
   },
   "engines": {
     "node": "18.x"
