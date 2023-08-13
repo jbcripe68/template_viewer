@@ -30,102 +30,96 @@ if (jsonFile.indexOf("/") === -1) {
 const jsonData = require(jsonFile);
 
 async function writeTable(tableName) {
-  // describe table
-  async function describeTable() {
-    return new Promise((resolve, reject) => {
-      dynamodb.describeTable({ TableName: tableName }, (err, data) => {
-        if (err) return reject(err);
-        return resolve(data);
-      });
-    });
-  }
-
   // create new table
   async function createTable() {
-    return new Promise((resolve, reject) => {
-      dynamodb.createTable(
-        {
-          TableName: tableName,
-          AttributeDefinitions: [
-            {
-              AttributeName: "id",
-              AttributeType: "S",
-            },
-          ],
-          KeySchema: [
-            {
-              AttributeName: "id",
-              KeyType: "HASH",
-            },
-          ],
-          ProvisionedThroughput: {
-            ReadCapacityUnits: 1,
-            WriteCapacityUnits: 1,
+    return dynamodb
+      .createTable({
+        TableName: tableName,
+        AttributeDefinitions: [
+          {
+            AttributeName: "id",
+            AttributeType: "S",
           },
+        ],
+        KeySchema: [
+          {
+            AttributeName: "id",
+            KeyType: "HASH",
+          },
+        ],
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 1,
+          WriteCapacityUnits: 1,
         },
-        (err, data) => {
-          if (err) return reject(err);
-          console.log(JSON.stringify(data, null, 2));
-          resolve();
-        }
-      );
-    });
+      })
+      .promise();
   }
 
-  // see if table exists
-  async function tableExists() {
+  function waitForTableActive() {
     return new Promise((resolve, reject) => {
-      dynamodb.listTables({}, async (err, data) => {
-        if (err) return reject(err);
-        console.log(JSON.stringify(data, null, 2));
-        if (data.TableNames.includes(tableName)) {
-          return resolve(true);
-        }
-
-        let create = await prompt(
-          `Table ${tableName} does not exist, do you want to create it? => `
-        );
-        create = create.toLowerCase();
-        if (create.at(0) !== "y") {
-          return resolve(false);
-        }
-
-        await createTable();
-
-        async function waitForTableActive() {
-          const description = await describeTable();
+      async function describeTableUntilActive() {
+        try {
+          const description = await dynamodb
+            .describeTable({ TableName: tableName })
+            .promise();
           if (description.Table.TableStatus !== "ACTIVE") {
             console.log(
-              `Waiting for new table to be active: ${description.Table.TableStatus}`
+              `Waiting for new table to be ACTIVE: ${description.Table.TableStatus}`
             );
-            return setTimeout(waitForTableActive, 2000);
+            return setTimeout(describeTableUntilActive, 2000);
           }
           console.log(
             `Continuing as table ${tableName} is now in ACTIVE state`
           );
           resolve(true);
+        } catch (err) {
+          reject(err);
         }
-        setTimeout(waitForTableActive, 2000);
-      });
+      }
+      setTimeout(describeTableUntilActive, 2000);
     });
   }
 
-  function writeItems(writeRequests) {
-    return new Promise((resolve, reject) => {
-      dynamodb.batchWriteItem(
-        {
-          RequestItems: { [tableName]: writeRequests },
-        },
-        (err) => {
-          if (err) return reject(err);
-          console.log(`${writeRequests.length} items written to ${tableName}`);
-          resolve();
-        }
+  // see if table exists
+  async function tableExists() {
+    try {
+      const data = await dynamodb.listTables({}).promise();
+      //console.log(JSON.stringify(data, null, 2));
+      if (data.TableNames.includes(tableName)) {
+        return true;
+      }
+
+      let create = await prompt(
+        `Table ${tableName} does not exist, do you want to create it? => `
       );
-    });
+      create = create.toLowerCase();
+      if (create.at(0) !== "y") {
+        return false;
+      }
+
+      await createTable();
+
+      await waitForTableActive();
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
   }
 
-  if (!(await tableExists())) process.exit(1);
+  async function writeItems(writeRequests) {
+    await dynamodb
+      .batchWriteItem({
+        RequestItems: { [tableName]: writeRequests },
+      })
+      .promise();
+    console.log(`${writeRequests.length} items written to ${tableName}`);
+  }
+
+  if (!(await tableExists())) {
+    console.log("exiting because table not found.");
+    process.exit(1);
+  }
 
   if (Array.isArray(jsonData)) {
     const writeRequests = jsonData.map((rec) => ({
@@ -154,13 +148,14 @@ async function writeTable(tableName) {
     }));
 
     const writePromises = [];
-    while (writeRequests.length > 25) {
+    while (writeRequests.length > 0) {
       const batch = writeRequests.splice(0, 25);
       writePromises.push(writeItems(batch));
     }
     await Promise.all(writePromises);
 
     console.log("Finished");
+    process.exit(0);
   } else {
     console.log(`JSON in ${process.argv[2]} should be an array of objects`);
   }

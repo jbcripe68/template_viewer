@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { MessageOverlay } from "./MessageOverlay";
 import { Large } from "./Large";
 import { Thumbnails } from "./Thumbnails";
+import { Footer } from "./Footer";
 
 export default function App() {
   const [data, setData] = useState([]);
@@ -99,6 +100,7 @@ export default function App() {
           onNextClick={handleNextClick}
           onPreviousClick={handlePreviousClick}
         />
+        <Footer page={page + 1} totalPages={totalPages} />
       </main>
     </div>
   );
