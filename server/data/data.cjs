@@ -1,27 +1,46 @@
-/* eslint-disable global-require */
+/* eslint-disable import/no-extraneous-dependencies */
+const AWS = require("aws-sdk");
 
-// Get the data from the JSON file depending on the NODE_ENV
-let data;
+AWS.config.update({ region: "us-east-2" });
+const dynamodb = new AWS.DynamoDB();
+let keys = [];
+let TableName = "";
+
+// Get the data from the DynamoDB table depending on the NODE_ENV
 if (process.env.NODE_ENV === "development") {
-  data = require("./templates.json");
+  TableName = "template_viewer_data";
 } else if (process.env.NODE_ENV === "production") {
-  data = require("./extendedTemplate.json");
-} else if (process.env.NODE_ENV === "test") {
-  data = JSON.parse(process.env.testData);
+  TableName = "template_viewer_data_prod";
 } else {
   throw new Error(
     `Invalid NODE_ENV: ${
       process.env.NODE_ENV
         ? process.env.NODE_ENV
-        : "must be 'development', 'production', or 'test'"
+        : "must be 'development' or 'production'"
     }`
   );
 }
+
+// initialize "keys" from every item in dynamoDB table
+dynamodb.scan(
+  {
+    TableName,
+    ProjectionExpression: "id",
+  },
+  (err, data) => {
+    if (err) throw err;
+    keys = data.Items;
+    console.log(
+      `Scanned ${keys.length} items: ${JSON.stringify(keys, null, 2)}`
+    );
+  }
+);
+
 /* Function getLength()
     returns the length of the data array.  This can be changed to point
     to a database at a later time.
 */
-exports.getLength = () => data.length;
+exports.getLength = () => keys.length;
 
 /* Function getPage()
     returns the requested page of the data array.  This function takes
@@ -32,6 +51,28 @@ exports.getLength = () => data.length;
     function can also be changed to point to a database at a later time.
 */
 exports.getPage = function (page, objsPerPage) {
-  const offset = page * objsPerPage;
-  return data.slice(offset, offset + objsPerPage);
+  //  const offset = page * objsPerPage;
+  //  return data.slice(offset, offset + objsPerPage);
+  return new Promise((resolve, reject) => {
+    dynamodb.scan(
+      {
+        TableName,
+        Limit: objsPerPage,
+        ExclusiveStartKey:
+          page === 0 ? undefined : keys[objsPerPage * page - 1],
+      },
+      (err, data) => {
+        if (err) reject(err);
+        const pageData = data.Items.map((dynoItem) => {
+          const item = {};
+          Object.keys(dynoItem).forEach((key) => {
+            item[key] = dynoItem[key].S;
+          });
+          return item;
+        });
+        console.log(`Page[${page}]: ${JSON.stringify(pageData)}`);
+        resolve(pageData);
+      }
+    );
+  });
 };

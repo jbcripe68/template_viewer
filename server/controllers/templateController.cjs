@@ -16,7 +16,7 @@ const data = require("../data/data.cjs");
    - numTotalPages: total number of pages available
    - data: array of objects on the requested page
 */
-exports.getTemplatePage = (req, res, next) => {
+exports.getTemplatePage = async (req, res, next) => {
   let objsPerPage;
   if (req.query.objsPerPage) {
     const temp = Number(req.query.objsPerPage);
@@ -47,7 +47,7 @@ exports.getTemplatePage = (req, res, next) => {
       )
     );
   }
-  const results = data.getPage(page, objsPerPage);
+  const results = await data.getPage(page, objsPerPage);
   res.status(200).json({
     status: "success",
     results: results.length,
